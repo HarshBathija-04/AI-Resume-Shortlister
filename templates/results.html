@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Results - AI Resume Screening</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="page-wrap">
+        <div class="container results-page">
+            <div class="results-header">
+                <div>
+                    <h1>Ranked Results</h1>
+                    <p class="muted">Method: {{ method|upper }} | Resumes: {{ results|length }}</p>
+                </div>
+                <div class="results-actions">
+                    <a class="btn btn-outline-light" href="/">New Match</a>
+                    <a class="btn btn-primary" href="/download">Download CSV</a>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    <div class="panel">
+                        <h2>Rankings</h2>
+                        <div class="table-responsive">
+                            <table class="table align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Resume</th>
+                                        <th>Score</th>
+                                        <th>Category</th>
+                                        <th>Matched Skills</th>
+                                        <th>Missing Skills</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in results %}
+                                    <tr>
+                                        <td>{{ row.filename }}</td>
+                                        <td class="score-cell">{{ row.score }}%</td>
+                                        <td><span class="badge bg-secondary">{{ row.category }}</span></td>
+                                        <td>
+                                            {% if row.matched_skills %}
+                                                {% for skill in row.matched_skills %}
+                                                <span class="badge badge-skill">{{ skill }}</span>
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="muted">None</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if row.missing_skills %}
+                                                {% for skill in row.missing_skills %}
+                                                <span class="badge badge-missing">{{ skill }}</span>
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="muted">None</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr class="details-row">
+                                        <td colspan="5">
+                                            <div class="details-grid">
+                                                <div>
+                                                    <h6>Education</h6>
+                                                    {% if row.education %}
+                                                        <ul>
+                                                            {% for item in row.education %}
+                                                            <li>{{ item }}</li>
+                                                            {% endfor %}
+                                                        </ul>
+                                                    {% else %}
+                                                        <p class="muted">No education signals found.</p>
+                                                    {% endif %}
+                                                </div>
+                                                <div>
+                                                    <h6>Experience</h6>
+                                                    {% if row.experience %}
+                                                        <ul>
+                                                            {% for item in row.experience %}
+                                                            <li>{{ item }}</li>
+                                                            {% endfor %}
+                                                        </ul>
+                                                    {% else %}
+                                                        <p class="muted">No experience signals found.</p>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="panel">
+                        <h2>Score Distribution</h2>
+                        <canvas id="scoreChart" height="220"></canvas>
+                    </div>
+                    <div class="panel mt-4">
+                        <h2>Skill Coverage</h2>
+                        <canvas id="skillChart" height="220"></canvas>
+                        {% if not job_skills %}
+                        <p class="muted mt-2">No job skills detected. Add skills to the job description for better coverage.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        const scoreLabels = {{ score_labels|tojson }};
+        const scoreValues = {{ score_values|tojson }};
+        const matchedCount = {{ skill_coverage.matched|tojson }};
+        const missingCount = {{ skill_coverage.missing|tojson }};
+
+        const scoreCtx = document.getElementById('scoreChart');
+        new Chart(scoreCtx, {
+            type: 'bar',
+            data: {
+                labels: scoreLabels,
+                datasets: [{
+                    label: 'Match Score',
+                    data: scoreValues,
+                    backgroundColor: '#f97316',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true, max: 100 }
+                }
+            }
+        });
+
+        const skillCtx = document.getElementById('skillChart');
+        new Chart(skillCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Matched', 'Missing'],
+                datasets: [{
+                    data: [matchedCount, missingCount],
+                    backgroundColor: ['#14b8a6', '#ef4444']
+                }]
+            },
+            options: {
+                responsive: true
+            }
+        });
+    </script>
+</body>
+</html>
