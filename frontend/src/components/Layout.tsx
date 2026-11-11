@@ -7,7 +7,7 @@ const navClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'bg-brand-soft text-brand-strong' : 'text-ink-muted hover:bg-sunken hover:text-ink'
   }`
 
-export function Logo() {
+function Logo() {
   return (
     <span className="flex items-center gap-2.5">
       <svg viewBox="0 0 32 32" className="size-8" aria-hidden="true">

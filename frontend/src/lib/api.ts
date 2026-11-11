@@ -1,7 +1,7 @@
 import type { Run, RunList } from './types'
 import { wake } from './wake'
 
-export const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:5100').replace(/\/+$/, '')
+const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:5100').replace(/\/+$/, '')
 
 const SLOW_MS = 5000
 const TIMEOUT_MS = 120_000

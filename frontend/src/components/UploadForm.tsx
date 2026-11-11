@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ApiError, api } from '../lib/api'
 import { MAX_FILES, MAX_JD_CHARS, MIN_JD_CHARS, addFiles, formatBytes } from '../lib/files'
+import { plural } from '../lib/format'
 import { buttonPrimary } from './ui'
 
 const STEPS = [
@@ -32,12 +33,20 @@ export function UploadForm() {
   }, [submitting])
 
   function pick(incoming: File[]) {
+    if (submitting) return
     const { accepted, rejected } = addFiles(files, incoming)
     setFiles(accepted)
     if (accepted.length) setErrors((e) => ({ ...e, files: undefined }))
     if (rejected.length)
       toast.error(rejected.length === 1 ? rejected[0] : `${rejected.length} files skipped`, {
-        description: rejected.length > 1 ? rejected.join('\n') : undefined,
+        description:
+          rejected.length > 1 ? (
+            <ul>
+              {rejected.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          ) : undefined,
       })
   }
 
@@ -65,7 +74,9 @@ export function UploadForm() {
     setSubmitting(true)
     try {
       const run = await api.createRun(form)
-      toast.success('Shortlist ready', { description: `${run.results.length} resumes ranked.` })
+      toast.success('Shortlist ready', {
+        description: `${plural(run.results.length, 'resume')} ranked.`,
+      })
       navigate(`/runs/${run.id}`)
     } catch (err) {
       const apiErr = err instanceof ApiError ? err : null
@@ -86,9 +97,11 @@ export function UploadForm() {
       className="rounded-lg border border-line bg-surface p-5 shadow-card sm:p-6"
     >
       <h2 className="text-xl font-semibold">New screening</h2>
-      <p className="mt-1 text-sm text-ink-muted">Everything is ranked in a single run.</p>
+      <p className="mt-1 text-sm text-ink-muted">
+        Paste the role, add resumes, and get a ranked shortlist in one run.
+      </p>
 
-      <div className="mt-5 space-y-5">
+      <fieldset disabled={submitting} className="mt-5 min-w-0 space-y-5 disabled:opacity-70">
         <div>
           <label htmlFor={ids.title} className="text-sm font-semibold">
             Role title <span className="font-normal text-ink-muted">(optional)</span>
@@ -99,7 +112,7 @@ export function UploadForm() {
             maxLength={120}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. Backend Engineer, Platform team"
-            className="mt-1.5 block min-h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-sm placeholder:text-ink-muted/70 focus-visible:border-brand"
+            className="mt-1.5 block min-h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-sm transition-colors duration-150 placeholder:text-ink-muted/70 hover:border-ink-muted/60 focus-visible:border-brand"
           />
         </div>
 
@@ -122,13 +135,16 @@ export function UploadForm() {
             aria-invalid={!!errors.jd}
             aria-describedby={ids.jdHelp}
             placeholder="Paste responsibilities, required skills and nice-to-haves…"
-            className="mt-1.5 block w-full resize-y rounded-md border border-line-strong bg-surface px-3 py-2.5 text-sm leading-relaxed placeholder:text-ink-muted/70 focus-visible:border-brand aria-invalid:border-poor"
+            className="mt-1.5 block w-full resize-y rounded-md border border-line-strong bg-surface px-3 py-2.5 text-sm leading-relaxed transition-colors duration-150 placeholder:text-ink-muted/70 hover:border-ink-muted/60 focus-visible:border-brand aria-invalid:border-poor"
           />
           <p
             id={ids.jdHelp}
             className={`mt-1.5 text-xs ${errors.jd ? 'text-poor' : 'text-ink-muted'}`}
           >
-            {errors.jd ?? 'Skills listed here drive the matched / missing analysis.'}
+            {errors.jd ??
+              (jdLength > 0 && jdLength < MIN_JD_CHARS
+                ? `${MIN_JD_CHARS - jdLength} more characters needed.`
+                : 'Skills listed here drive the matched / missing analysis.')}
           </p>
         </div>
 
@@ -177,7 +193,8 @@ export function UploadForm() {
             id={ids.filesHelp}
             className={`mt-1.5 text-xs ${errors.files ? 'text-poor' : 'text-ink-muted'}`}
           >
-            {errors.files ?? `${files.length} of ${MAX_FILES} added`}
+            {errors.files ??
+              (files.length ? `${files.length} of ${MAX_FILES} added` : 'No files yet.')}
           </p>
 
           {files.length > 0 && (
@@ -207,7 +224,7 @@ export function UploadForm() {
             </ul>
           )}
         </div>
-      </div>
+      </fieldset>
 
       {errors.form && (
         <p role="alert" className="mt-5 rounded-md bg-poor-soft px-3 py-2 text-sm text-poor">

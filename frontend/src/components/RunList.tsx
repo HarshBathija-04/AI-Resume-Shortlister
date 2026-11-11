@@ -1,6 +1,6 @@
 import { ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { candidateLabel, formatDate, formatScore } from '../lib/format'
+import { candidateLabel, formatDate, formatScore, plural } from '../lib/format'
 import type { RunSummary } from '../lib/types'
 import { Skeleton } from './ui'
 
@@ -18,7 +18,8 @@ export function RunRows({ runs }: { runs: RunSummary[] }) {
                 {run.title}
               </span>
               <span className="block text-sm text-ink-muted">
-                {formatDate(run.created_at)} · {run.resume_count} resumes
+                {formatDate(run.created_at)} · {plural(run.resume_count, 'resume')}
+                <span className="sm:hidden"> · best {formatScore(run.top_score)}</span>
               </span>
             </span>
             <span className="hidden min-w-0 text-sm sm:block">

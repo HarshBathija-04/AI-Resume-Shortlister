@@ -5,13 +5,8 @@ export const MAX_JD_CHARS = 20_000
 
 const ALLOWED = ['.pdf', '.docx']
 
-export interface FileCheck {
-  accepted: File[]
-  rejected: string[]
-}
-
 /** Merge newly picked files into the current list, skipping duplicates and invalid files. */
-export function addFiles(current: File[], incoming: File[]): FileCheck {
+export function addFiles(current: File[], incoming: File[]) {
   const accepted = [...current]
   const rejected: string[] = []
   const key = (f: File) => `${f.name}:${f.size}`

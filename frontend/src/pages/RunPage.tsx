@@ -12,7 +12,7 @@ import {
   buttonSecondary,
 } from '../components/ui'
 import { ApiError, api } from '../lib/api'
-import { candidateLabel, formatDate, formatScore, methodLabel } from '../lib/format'
+import { candidateLabel, formatDate, formatScore, plural } from '../lib/format'
 import type { CandidateResult, Run } from '../lib/types'
 import { useAsync } from '../lib/useAsync'
 import { NotFoundPage } from './NotFound'
@@ -87,7 +87,7 @@ function CandidateCard({ result }: { result: CandidateResult }) {
               <SkillChips
                 skills={result.matched_skills}
                 variant="matched"
-                empty="No required skills found."
+                empty="None of the role's skills appear in this resume."
               />
             </div>
             <div>
@@ -100,7 +100,7 @@ function CandidateCard({ result }: { result: CandidateResult }) {
               <SkillChips
                 skills={result.missing_skills}
                 variant="missing"
-                empty="Covers every tracked skill."
+                empty="Covers every skill the role asks for."
               />
             </div>
           </div>
@@ -111,15 +111,17 @@ function CandidateCard({ result }: { result: CandidateResult }) {
                 Education and experience signals
               </summary>
               <div className="mt-3 grid gap-4 text-sm md:grid-cols-2">
-                {[
-                  ['Education', result.education],
-                  ['Experience', result.experience],
-                ].map(([label, items]) => (
-                  <div key={label as string}>
-                    <h5 className="font-semibold">{label as string}</h5>
-                    {(items as string[]).length ? (
+                {(
+                  [
+                    ['Education', result.education],
+                    ['Experience', result.experience],
+                  ] as const
+                ).map(([label, items]) => (
+                  <div key={label}>
+                    <h5 className="font-semibold">{label}</h5>
+                    {items.length ? (
                       <ul className="mt-1.5 list-disc space-y-1 pl-5 text-ink-muted">
-                        {(items as string[]).slice(0, 6).map((item) => (
+                        {items.slice(0, 6).map((item) => (
                           <li key={item} className="break-words">
                             {item}
                           </li>
@@ -157,7 +159,8 @@ function RunView({ run }: { run: Run }) {
         <div className="min-w-0">
           <h1 className="text-3xl font-bold tracking-tight break-words sm:text-4xl">{run.title}</h1>
           <p className="mt-2 text-sm text-ink-muted">
-            {formatDate(run.created_at)} · {run.results.length} resumes · {methodLabel(run.method)}
+            {formatDate(run.created_at)} · {plural(run.results.length, 'resume')} ·{' '}
+            {run.method === 'tfidf' ? 'TF-IDF match' : 'Semantic match'}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -179,12 +182,12 @@ function RunView({ run }: { run: Run }) {
         <Stat
           label="Average score"
           value={formatScore(avg)}
-          hint={`across ${scores.length} resumes`}
+          hint={`across ${plural(scores.length, 'resume')}`}
         />
         <Stat
           label="Skills required"
           value={String(run.job_skills.length)}
-          hint={`all candidates: ${run.skill_coverage.matched} matched, ${run.skill_coverage.missing} missing`}
+          hint={`${run.skill_coverage.matched} matched · ${run.skill_coverage.missing} missing across candidates`}
         />
       </dl>
 
@@ -205,7 +208,7 @@ function RunView({ run }: { run: Run }) {
                 icon={<Users className="size-5" aria-hidden="true" />}
                 title="No candidates"
               >
-                This run has no stored results.
+                This run has no stored results. Start a new screening to rank resumes again.
               </EmptyState>
             </div>
           )}

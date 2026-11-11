@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { toApiError } from './api'
 import { MAX_FILES, addFiles } from './files'
-import { candidateLabel, formatScore } from './format'
+import { candidateLabel, formatScore, plural } from './format'
 
 const file = (name: string, size = 1000) => new File([new Uint8Array(size)], name)
 
@@ -51,5 +51,7 @@ describe('format helpers', () => {
     expect(formatScore(81.816)).toBe('81.8')
     expect(formatScore(null)).toBe('–')
     expect(candidateLabel('jane_doe_cv.pdf')).toBe('jane doe cv')
+    expect(plural(1, 'resume')).toBe('1 resume')
+    expect(plural(3, 'resume')).toBe('3 resumes')
   })
 })

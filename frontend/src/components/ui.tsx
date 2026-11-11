@@ -1,18 +1,25 @@
 import { AlertTriangle, RotateCw } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { categoryBar, categoryStyles, formatScore } from '../lib/format'
+import { formatScore } from '../lib/format'
 import type { Category } from '../lib/types'
 
-export const buttonBase =
+const buttonBase =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold transition-[background-color,color,box-shadow,transform] duration-150 ease-out active:scale-[0.97] disabled:pointer-events-none disabled:opacity-60'
 export const buttonPrimary = `${buttonBase} bg-brand text-white shadow-sm hover:bg-brand-strong`
 export const buttonSecondary = `${buttonBase} border border-line-strong bg-surface text-ink hover:bg-sunken`
 
+const CATEGORY_STYLES: Record<Category, { badge: string; bar: string }> = {
+  Excellent: { badge: 'bg-excellent-soft text-excellent', bar: 'bg-excellent' },
+  Good: { badge: 'bg-good-soft text-good', bar: 'bg-good' },
+  Average: { badge: 'bg-average-soft text-average', bar: 'bg-average' },
+  Poor: { badge: 'bg-poor-soft text-poor', bar: 'bg-poor' },
+}
+
 export function CategoryBadge({ category }: { category: Category }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${categoryStyles[category]}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${CATEGORY_STYLES[category].badge}`}
     >
       {category}
     </span>
@@ -25,7 +32,7 @@ export function ScoreMeter({ score, category }: { score: number; category: Categ
     <div className="flex items-center gap-3">
       <div className="h-2 flex-1 overflow-hidden rounded-full bg-sunken" aria-hidden="true">
         <div
-          className={`h-full rounded-full ${categoryBar[category]}`}
+          className={`h-full rounded-full ${CATEGORY_STYLES[category].bar}`}
           style={{ width: `${width}%` }}
         />
       </div>

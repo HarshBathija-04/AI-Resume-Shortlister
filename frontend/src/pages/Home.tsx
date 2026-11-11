@@ -3,6 +3,7 @@ import { RunRows, RunRowsSkeleton } from '../components/RunList'
 import { UploadForm } from '../components/UploadForm'
 import { EmptyState, ErrorState, TextLink } from '../components/ui'
 import { api } from '../lib/api'
+import { MAX_FILES } from '../lib/files'
 import { useAsync } from '../lib/useAsync'
 
 const FEATURES = [
@@ -37,8 +38,9 @@ export function HomePage() {
             Rank every resume against the job, in one pass.
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-muted">
-            Upload up to 12 resumes and paste the job description. You get a ranked shortlist with a
-            match score, a skill-gap breakdown and an AI summary for each candidate.
+            Upload up to {MAX_FILES} resumes and paste the job description. You get a ranked
+            shortlist with a match score, a skill-gap breakdown and an AI summary for each
+            candidate.
           </p>
 
           <ul className="mt-9 space-y-5">
