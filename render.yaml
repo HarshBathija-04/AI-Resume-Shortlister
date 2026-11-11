@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: resume-shortlister-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: >-
+      pip install -r requirements.txt &&
+      python -m nltk.downloader -q -d ./nltk_data punkt punkt_tab stopwords wordnet omw-1.4 &&
+      python -c "import matcher; matcher.ensure_model()"
+    # seed.py runs migrations and inserts demo runs only if they are missing.
+    startCommand: python seed.py && gunicorn app:app --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13"
+      - key: DB_SCHEMA
+        value: resume_shortlister
+      - key: MATCH_METHOD
+        value: semantic
+      - key: NLTK_DATA
+        value: /opt/render/project/src/backend/nltk_data
+      - key: DATABASE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false

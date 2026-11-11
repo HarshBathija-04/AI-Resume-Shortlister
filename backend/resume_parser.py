@@ -1,10 +1,10 @@
-import PyPDF2
 import docx
+import pypdf
 
 
 def read_pdf(file_obj):
     text = ""
-    reader = PyPDF2.PdfReader(file_obj)
+    reader = pypdf.PdfReader(file_obj)
     for page in reader.pages:
         page_text = page.extract_text()
         if page_text:
@@ -17,8 +17,8 @@ def read_docx(file_obj):
     return "\n".join([p.text for p in doc.paragraphs])
 
 
-def extract_text_from_file(file_obj):
-    filename = (file_obj.filename or "").lower()
+def extract_text_from_file(file_obj, filename=None):
+    filename = (filename or getattr(file_obj, "filename", "") or "").lower()
 
     if filename.endswith(".pdf"):
         return read_pdf(file_obj)

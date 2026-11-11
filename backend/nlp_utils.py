@@ -1,7 +1,7 @@
 import re
 import string
-import nltk
 
+import nltk
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
@@ -10,6 +10,7 @@ from nltk.tokenize import word_tokenize
 def _ensure_nltk_data():
     resources = [
         ("tokenizers/punkt", "punkt"),
+        ("tokenizers/punkt_tab", "punkt_tab"),
         ("corpora/stopwords", "stopwords"),
         ("corpora/wordnet", "wordnet"),
         ("corpora/omw-1.4", "omw-1.4"),

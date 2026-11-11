@@ -1,6 +1,12 @@
+import os
+import re
+import threading
+import urllib.request
+from pathlib import Path
+
+import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import re
 
 SKILLS = [
     "python",
@@ -67,12 +73,9 @@ def extract_skills(text):
     found = set()
 
     for skill in SKILLS:
-        if " " in skill:
-            if skill in text:
-                found.add(skill)
-        else:
-            if re.search(r"\b" + re.escape(skill) + r"\b", text):
-                found.add(skill)
+        # Lookarounds instead of \b so skills ending in symbols (c++, c#) still match.
+        if re.search(r"(?<![\w+#])" + re.escape(skill) + r"(?![\w+#])", text):
+            found.add(skill)
 
     return found
 
@@ -125,20 +128,61 @@ def _tfidf_similarity(resume_texts, job_text):
     return scores.flatten().tolist()
 
 
-def _semantic_similarity(resume_texts, job_text):
-    try:
-        from sentence_transformers import SentenceTransformer, util
-    except Exception as exc:
-        raise RuntimeError(
-            "Sentence Transformers is not available. Install sentence-transformers to use semantic matching."
-        ) from exc
+# Same all-MiniLM-L6-v2 model the app used via sentence-transformers, as a quantized ONNX export:
+# ~60 MB RAM instead of ~1 GB for torch, so it fits a 512 MB Render instance.
+MODEL_DIR = Path(os.environ.get("MODEL_DIR", Path(__file__).parent / "models" / "all-MiniLM-L6-v2"))
+MODEL_FILES = {
+    "model.onnx": "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/onnx/model_quantized.onnx",
+    "tokenizer.json": "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/tokenizer.json",
+}
+_MODEL = None
+_MODEL_LOCK = threading.Lock()
 
-    model = SentenceTransformer("all-MiniLM-L6-v2")
-    embeddings = model.encode([job_text] + resume_texts, convert_to_tensor=True)
-    job_emb = embeddings[0]
-    resume_embs = embeddings[1:]
-    scores = util.cos_sim(resume_embs, job_emb)
-    return scores.cpu().numpy().flatten().tolist()
+
+def ensure_model():
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    for name, url in MODEL_FILES.items():
+        target = MODEL_DIR / name
+        if not target.exists():
+            tmp = target.with_suffix(".part")
+            urllib.request.urlretrieve(url, tmp)  # noqa: S310 - fixed https URLs above
+            tmp.replace(target)
+
+
+def _load_model():
+    global _MODEL
+    with _MODEL_LOCK:
+        if _MODEL is None:
+            _MODEL = _create_model()
+    return _MODEL
+
+
+def _create_model():
+    import onnxruntime as ort
+    from tokenizers import Tokenizer
+
+    ensure_model()
+    options = ort.SessionOptions()
+    options.enable_cpu_mem_arena = False
+    options.intra_op_num_threads = 1
+    session = ort.InferenceSession(str(MODEL_DIR / "model.onnx"), options, providers=["CPUExecutionProvider"])
+    tokenizer = Tokenizer.from_file(str(MODEL_DIR / "tokenizer.json"))
+    tokenizer.no_padding()  # single unpadded inputs, so mean pooling sees only real tokens
+    tokenizer.enable_truncation(256)  # sentence-transformers max_seq_length for this model
+    return session, tokenizer
+
+
+def _embed(text):
+    session, tokenizer = _load_model()
+    ids = np.array([tokenizer.encode(text).ids], dtype=np.int64)
+    feeds = {"input_ids": ids, "attention_mask": np.ones_like(ids), "token_type_ids": np.zeros_like(ids)}
+    vector = session.run(None, feeds)[0].mean(axis=1)[0]  # mean pooling
+    return vector / (np.linalg.norm(vector) or 1.0)
+
+
+def _semantic_similarity(resume_texts, job_text):
+    job_emb = _embed(job_text)
+    return [float(_embed(text) @ job_emb) for text in resume_texts]
 
 
 def rank_resumes(resume_texts, job_text, method):

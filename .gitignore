@@ -50,3 +50,7 @@ Desktop.ini
 # Logs
 logs/
 *.log
+
+# Local runtime assets
+nltk_data/
+backend/models/

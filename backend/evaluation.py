@@ -4,14 +4,14 @@ import os
 
 from sklearn.metrics import precision_score, recall_score
 
-from resume_parser import extract_text_from_path
-from nlp_utils import preprocess_text
 from matcher import rank_resumes
+from nlp_utils import preprocess_text
+from resume_parser import extract_text_from_path
 
 
 def load_labels(path):
     labels = {}
-    with open(path, "r", encoding="utf-8") as handle:
+    with open(path, encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
         for row in reader:
             labels[row["filename"]] = int(row["label"])
@@ -27,16 +27,12 @@ def main():
     parser.add_argument("--threshold", type=float, default=70)
     args = parser.parse_args()
 
-    with open(args.job, "r", encoding="utf-8") as handle:
+    with open(args.job, encoding="utf-8") as handle:
         job_description = handle.read()
 
     labels = load_labels(args.labels)
 
-    resume_files = [
-        f
-        for f in os.listdir(args.resumes)
-        if f.lower().endswith((".pdf", ".docx"))
-    ]
+    resume_files = [f for f in os.listdir(args.resumes) if f.lower().endswith((".pdf", ".docx"))]
 
     resume_texts = []
     filenames = []

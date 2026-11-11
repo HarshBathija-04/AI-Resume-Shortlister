@@ -1,7 +1,0 @@
-Flask
-PyPDF2
-python-docx
-scikit-learn
-nltk
-flask-restful
-sentence-transformers
