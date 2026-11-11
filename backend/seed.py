@@ -99,8 +99,8 @@ def seed():
     for demo in DEMO_RUNS:
         if demo["seed_key"] in existing:
             continue
-        jd = demo.get("jd") or extract_text_from_path(str(SAMPLES / demo["jd_file"]))
-        resumes = [(name, extract_text_from_path(str(SAMPLES / name))) for name in demo["resumes"]]
+        jd = demo.get("jd") or extract_text_from_path(SAMPLES / demo["jd_file"])
+        resumes = [(name, extract_text_from_path(SAMPLES / name)) for name in demo["resumes"]]
         run_id = shortlist.create_run(demo["title"], jd, resumes, seed_key=demo["seed_key"])
         print(f"seeded {demo['seed_key']} as run {run_id}")
 

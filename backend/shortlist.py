@@ -4,13 +4,7 @@ import os
 
 from ai import summarize_candidates
 from db import connect
-from matcher import (
-    extract_education,
-    extract_experience,
-    extract_skills,
-    match_category,
-    rank_resumes,
-)
+from matcher import extract_education, extract_experience, extract_skills, match_category, rank_resumes
 from nlp_utils import preprocess_text
 
 
@@ -26,25 +20,23 @@ def build_results(resume_texts, filenames, job_description, method):
         raise ValueError("At least one resume is required.")
 
     job_clean = preprocess_text(job_description)
-    resume_clean_texts = [preprocess_text(t) for t in resume_texts]
-
-    scores = rank_resumes(resume_clean_texts, job_clean, method)
+    scores = rank_resumes([preprocess_text(t) for t in resume_texts], job_clean, method)
     # Skills come from raw text: preprocessing strips symbols and lemmatizes (c++ -> c, pandas -> panda).
     job_skills = sorted(extract_skills(job_description))
 
     results = []
-    for idx, filename in enumerate(filenames):
-        resume_skills = extract_skills(resume_texts[idx])
+    for filename, text, score in zip(filenames, resume_texts, scores, strict=True):
+        resume_skills = extract_skills(text)
         results.append(
             {
                 "filename": filename,
-                "score": scores[idx],
-                "category": match_category(scores[idx]),
+                "score": score,
+                "category": match_category(score),
                 "matched_skills": sorted(resume_skills.intersection(job_skills)),
                 "missing_skills": sorted(set(job_skills) - resume_skills),
-                "education": extract_education(resume_texts[idx]),
-                "experience": extract_experience(resume_texts[idx]),
-                "text": resume_texts[idx],
+                "education": extract_education(text),
+                "experience": extract_experience(text),
+                "text": text,
             }
         )
 

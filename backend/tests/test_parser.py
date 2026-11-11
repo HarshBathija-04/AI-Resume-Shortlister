@@ -23,12 +23,17 @@ def test_reads_docx_from_stream():
 
 
 def test_reads_bundled_pdf():
-    text = extract_text_from_path(str(SAMPLES / "SampleResume.pdf"))
+    text = extract_text_from_path(SAMPLES / "SampleResume.pdf")
     assert "python" in text.lower()
 
 
 def test_rejects_unsupported_type():
     with pytest.raises(ValueError):
         extract_text_from_file(io.BytesIO(b"hello"), "resume.txt")
+
+
+def test_rejects_unsupported_path(tmp_path):
+    path = tmp_path / "resume.txt"
+    path.write_text("hello")
     with pytest.raises(ValueError):
-        extract_text_from_path("resume.txt")
+        extract_text_from_path(path)

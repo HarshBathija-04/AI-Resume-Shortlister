@@ -78,12 +78,11 @@ def _resumes_from_upload():
         data = file_obj.read()
         if len(data) > MAX_FILE_BYTES:
             raise ApiError(400, "file_too_large", f"{name}: files must be 5 MB or smaller.")
-        file_obj.stream = io.BytesIO(data)
         try:
-            text = extract_text_from_file(file_obj.stream, name)
+            text = extract_text_from_file(io.BytesIO(data), name)
         except Exception:
             raise ApiError(422, "unreadable_file", f"{name}: the file could not be read.") from None
-        resumes.append({"filename": name, "text": text or ""})
+        resumes.append({"filename": name, "text": text})
     return resumes
 
 
@@ -114,7 +113,6 @@ def _get_run_or_404(run_id):
 
 def create_app():
     app = Flask(__name__)
-    app.json_provider_class = JSONProvider
     app.json = JSONProvider(app)
     app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)  # Render sits behind one proxy

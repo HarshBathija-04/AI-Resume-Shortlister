@@ -6,17 +6,17 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 
+NLTK_RESOURCES = [
+    ("tokenizers/punkt", "punkt"),
+    ("tokenizers/punkt_tab", "punkt_tab"),
+    ("corpora/stopwords", "stopwords"),
+    ("corpora/wordnet", "wordnet"),
+    ("corpora/omw-1.4", "omw-1.4"),
+]
+
 
 def _ensure_nltk_data():
-    resources = [
-        ("tokenizers/punkt", "punkt"),
-        ("tokenizers/punkt_tab", "punkt_tab"),
-        ("corpora/stopwords", "stopwords"),
-        ("corpora/wordnet", "wordnet"),
-        ("corpora/omw-1.4", "omw-1.4"),
-    ]
-
-    for path, name in resources:
+    for path, name in NLTK_RESOURCES:
         try:
             nltk.data.find(path)
         except LookupError:
@@ -34,13 +34,10 @@ def preprocess_text(text):
     text = re.sub(r"\S+@\S+", " ", text)
     text = text.translate(str.maketrans("", "", string.punctuation))
 
-    tokens = word_tokenize(text)
     stop_words = set(stopwords.words("english"))
     lemmatizer = WordNetLemmatizer()
-
-    cleaned = []
-    for token in tokens:
-        if token.isalpha() and token not in stop_words:
-            cleaned.append(lemmatizer.lemmatize(token))
-
-    return " ".join(cleaned)
+    return " ".join(
+        lemmatizer.lemmatize(token)
+        for token in word_tokenize(text)
+        if token.isalpha() and token not in stop_words
+    )

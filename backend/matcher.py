@@ -70,62 +70,28 @@ EXPERIENCE_KEYWORDS = [
 
 def extract_skills(text):
     text = text.lower()
-    found = set()
+    # Lookarounds instead of \b so skills ending in symbols (c++, c#) still match.
+    return {skill for skill in SKILLS if re.search(r"(?<![\w+#])" + re.escape(skill) + r"(?![\w+#])", text)}
 
-    for skill in SKILLS:
-        # Lookarounds instead of \b so skills ending in symbols (c++, c#) still match.
-        if re.search(r"(?<![\w+#])" + re.escape(skill) + r"(?![\w+#])", text):
-            found.add(skill)
 
-    return found
+def _matching_lines(text, keywords):
+    lines = (" ".join(line.split()) for line in text.splitlines())
+    return [line for line in lines if line and any(k in line.lower() for k in keywords)]
 
 
 def extract_education(text):
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    results = []
-
-    for line in lines:
-        lowered = line.lower()
-        if any(keyword in lowered for keyword in EDU_KEYWORDS):
-            results.append(line)
-
-    return _unique_trimmed(results)
+    return list(dict.fromkeys(_matching_lines(text, EDU_KEYWORDS)))
 
 
 def extract_experience(text):
-    results = []
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-
-    for line in lines:
-        lowered = line.lower()
-        if any(keyword in lowered for keyword in EXPERIENCE_KEYWORDS):
-            results.append(line)
-
-    year_matches = re.findall(r"\b\d+\+?\s+years?\b", text.lower())
-    for match in year_matches:
-        results.append(match)
-
-    return _unique_trimmed(results)
-
-
-def _unique_trimmed(items):
-    cleaned = []
-    seen = set()
-    for item in items:
-        value = " ".join(item.split())
-        if value and value not in seen:
-            cleaned.append(value)
-            seen.add(value)
-    return cleaned
+    years = [" ".join(m.split()) for m in re.findall(r"\b\d+\+?\s+years?\b", text.lower())]
+    return list(dict.fromkeys(_matching_lines(text, EXPERIENCE_KEYWORDS) + years))
 
 
 def _tfidf_similarity(resume_texts, job_text):
     vectorizer = TfidfVectorizer(stop_words="english", ngram_range=(1, 2), max_features=8000)
     vectors = vectorizer.fit_transform([job_text] + resume_texts)
-    job_vec = vectors[0]
-    resume_vecs = vectors[1:]
-    scores = cosine_similarity(resume_vecs, job_vec)
-    return scores.flatten().tolist()
+    return cosine_similarity(vectors[1:], vectors[0]).flatten().tolist()
 
 
 # Same all-MiniLM-L6-v2 model the app used via sentence-transformers, as a quantized ONNX export:
@@ -153,23 +119,21 @@ def _load_model():
     global _MODEL
     with _MODEL_LOCK:
         if _MODEL is None:
-            _MODEL = _create_model()
+            import onnxruntime as ort
+            from tokenizers import Tokenizer
+
+            ensure_model()
+            options = ort.SessionOptions()
+            options.enable_cpu_mem_arena = False
+            options.intra_op_num_threads = 1
+            session = ort.InferenceSession(
+                str(MODEL_DIR / "model.onnx"), options, providers=["CPUExecutionProvider"]
+            )
+            tokenizer = Tokenizer.from_file(str(MODEL_DIR / "tokenizer.json"))
+            tokenizer.no_padding()  # single unpadded inputs, so mean pooling sees only real tokens
+            tokenizer.enable_truncation(256)  # sentence-transformers max_seq_length for this model
+            _MODEL = session, tokenizer
     return _MODEL
-
-
-def _create_model():
-    import onnxruntime as ort
-    from tokenizers import Tokenizer
-
-    ensure_model()
-    options = ort.SessionOptions()
-    options.enable_cpu_mem_arena = False
-    options.intra_op_num_threads = 1
-    session = ort.InferenceSession(str(MODEL_DIR / "model.onnx"), options, providers=["CPUExecutionProvider"])
-    tokenizer = Tokenizer.from_file(str(MODEL_DIR / "tokenizer.json"))
-    tokenizer.no_padding()  # single unpadded inputs, so mean pooling sees only real tokens
-    tokenizer.enable_truncation(256)  # sentence-transformers max_seq_length for this model
-    return session, tokenizer
 
 
 def _embed(text):
@@ -189,12 +153,8 @@ def rank_resumes(resume_texts, job_text, method):
     if not job_text.strip():
         raise ValueError("Job description is empty after preprocessing.")
 
-    if method == "semantic":
-        raw_scores = _semantic_similarity(resume_texts, job_text)
-    else:
-        raw_scores = _tfidf_similarity(resume_texts, job_text)
-
-    return [round(score * 100, 2) for score in raw_scores]
+    similarity = _semantic_similarity if method == "semantic" else _tfidf_similarity
+    return [round(score * 100, 2) for score in similarity(resume_texts, job_text)]
 
 
 def match_category(score):
