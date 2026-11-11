@@ -189,7 +189,7 @@ All portfolio apps share one Render PostgreSQL instance; this app keeps its tabl
 
 ## Notes and limits
 
-- Uploaded files are parsed in memory and never stored. Only the filename, scores, skills, extracted education and experience lines, and the AI summary are saved.
+- Uploaded files are parsed in memory and never stored. Only the filename, scores, skills, extracted education and experience lines, and the AI summary are saved. A short excerpt of each resume (about 1,200 characters) is sent to Groq to write the summary.
 - The demo has no login, so anyone with the URL can see the run history. Do not upload real candidates' resumes to the public demo.
 - Skill detection uses a fixed list of about 30 technical skills (see `SKILLS` in `matcher.py`). Non-technical roles therefore rely on the semantic score and the AI summary.
 - Scores are a screening aid, not a hiring decision.

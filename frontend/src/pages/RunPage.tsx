@@ -36,10 +36,12 @@ function CandidateCard({ result }: { result: CandidateResult }) {
         className="grid gap-x-5 p-5 sm:grid-cols-[3.5rem_1fr] sm:p-6"
       >
         <p
-          className="tabular font-mono text-3xl leading-none font-semibold text-line-strong sm:text-4xl"
-          aria-label={`Rank ${result.rank}`}
+          className={`tabular font-mono text-3xl leading-none font-semibold sm:text-4xl ${
+            result.rank === 1 ? 'text-brand' : 'text-ink-muted'
+          }`}
         >
-          {String(result.rank).padStart(2, '0')}
+          <span className="sr-only">Rank {result.rank}</span>
+          <span aria-hidden="true">{String(result.rank).padStart(2, '0')}</span>
         </p>
         <div className="mt-3 min-w-0 sm:mt-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
