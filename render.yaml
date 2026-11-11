@@ -9,7 +9,7 @@ services:
       python -m nltk.downloader -q -d ./nltk_data punkt punkt_tab stopwords wordnet omw-1.4 &&
       python -c "import matcher; matcher.ensure_model()"
     # seed.py runs migrations and inserts demo runs only if they are missing.
-    startCommand: python seed.py && gunicorn app:app --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
+    startCommand: python seed.py && gunicorn app:app --workers 1 --threads 2 --timeout 120 --bind 0.0.0.0:$PORT
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
