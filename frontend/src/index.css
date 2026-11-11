@@ -1,0 +1,78 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Surfaces & text */
+  --color-paper: #f7f5f0;
+  --color-surface: #ffffff;
+  --color-sunken: #efece5;
+  --color-ink: #17201d;
+  --color-ink-muted: #56605c;
+  --color-line: #e2ddd2;
+  --color-line-strong: #cbc4b5;
+
+  /* Brand: deep teal ink with an amber accent reserved for AI output */
+  --color-brand: #0f5c53;
+  --color-brand-strong: #0b463f;
+  --color-brand-soft: #e3efec;
+  --color-accent: #9a4a08;
+  --color-accent-soft: #fbf0e2;
+
+  /* Match categories (always paired with a text label) */
+  --color-excellent: #15603a;
+  --color-excellent-soft: #e2f3e8;
+  --color-good: #0f5c53;
+  --color-good-soft: #e3efec;
+  --color-average: #7f5200;
+  --color-average-soft: #fbf1d9;
+  --color-poor: #9b2335;
+  --color-poor-soft: #fbe7ea;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-card: 0 1px 2px rgb(23 32 29 / 0.05), 0 8px 24px -12px rgb(23 32 29 / 0.14);
+  --shadow-pop: 0 2px 4px rgb(23 32 29 / 0.06), 0 16px 40px -16px rgb(23 32 29 / 0.25);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply bg-paper font-sans text-ink;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+    text-wrap: balance;
+  }
+  p,
+  li {
+    text-wrap: pretty;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
