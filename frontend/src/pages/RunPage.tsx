@@ -19,15 +19,15 @@ import { NotFoundPage } from './NotFound'
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="px-5 py-4">
+    <div className="min-w-0 px-3 py-3 sm:px-5 sm:py-4">
       <dt className="text-xs font-semibold tracking-wide text-ink-muted uppercase">{label}</dt>
-      <dd className="tabular mt-1 font-mono text-2xl font-semibold">{value}</dd>
-      {hint && <dd className="mt-0.5 truncate text-xs text-ink-muted">{hint}</dd>}
+      <dd className="tabular mt-1 font-mono text-xl font-semibold sm:text-2xl">{value}</dd>
+      {hint && <dd className="mt-0.5 line-clamp-2 text-xs text-ink-muted sm:truncate">{hint}</dd>}
     </div>
   )
 }
 
-function CandidateCard({ result }: { result: CandidateResult }) {
+function CandidateCard({ result, showSummary }: { result: CandidateResult; showSummary: boolean }) {
   const hasSignals = result.education.length > 0 || result.experience.length > 0
   return (
     <li className="rounded-lg border border-line bg-surface shadow-card">
@@ -62,19 +62,20 @@ function CandidateCard({ result }: { result: CandidateResult }) {
             <ScoreMeter score={result.score} category={result.category} />
           </div>
 
-          <div className="mt-5 rounded-md border-l-4 border-accent/70 bg-accent-soft/60 px-4 py-3">
-            <p className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-accent uppercase">
-              <Sparkles className="size-3.5" aria-hidden="true" /> AI fit summary
-            </p>
-            <p className="mt-1.5 text-sm leading-relaxed">
-              {result.summary ?? (
-                <span className="text-ink-muted">
-                  The AI summary was unavailable for this run (the model may have been rate
-                  limited). Scores and skills are unaffected.
-                </span>
-              )}
-            </p>
-          </div>
+          {showSummary && (
+            <div className="mt-5 rounded-md border-l-4 border-accent/70 bg-accent-soft/60 px-4 py-3">
+              <p className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-accent uppercase">
+                <Sparkles className="size-3.5" aria-hidden="true" /> AI fit summary
+              </p>
+              <p className="mt-1.5 text-sm leading-relaxed">
+                {result.summary ?? (
+                  <span className="text-ink-muted">
+                    No AI summary for this candidate. The score and skills below are unaffected.
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
 
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <div>
@@ -145,6 +146,7 @@ function RunView({ run }: { run: Run }) {
   const scores = run.results.map((r) => r.score)
   const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null
   const top = run.results[0]
+  const hasSummaries = run.results.some((r) => r.summary)
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
@@ -173,7 +175,7 @@ function RunView({ run }: { run: Run }) {
         </div>
       </div>
 
-      <dl className="mt-8 grid grid-cols-1 divide-y divide-line rounded-lg border border-line bg-surface shadow-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+      <dl className="mt-8 grid grid-cols-3 divide-x divide-line rounded-lg border border-line bg-surface shadow-card">
         <Stat
           label="Top match"
           value={formatScore(top?.score)}
@@ -187,7 +189,7 @@ function RunView({ run }: { run: Run }) {
         <Stat
           label="Skills required"
           value={String(run.job_skills.length)}
-          hint={`${run.skill_coverage.matched} matched · ${run.skill_coverage.missing} missing across candidates`}
+          hint={`${run.skill_coverage.matched} matched · ${run.skill_coverage.missing} missing`}
         />
       </dl>
 
@@ -196,10 +198,17 @@ function RunView({ run }: { run: Run }) {
           <h2 id="ranking-heading" className="text-xl font-semibold">
             Ranked candidates
           </h2>
+          {run.results.length > 0 && !hasSummaries && (
+            <p className="mt-2 flex items-start gap-1.5 text-sm text-ink-muted">
+              <Sparkles className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden="true" />
+              AI fit summaries were unavailable for this run. Match scores and skills are
+              unaffected.
+            </p>
+          )}
           {run.results.length ? (
             <ol className="mt-4 space-y-4">
               {run.results.map((result) => (
-                <CandidateCard key={result.rank} result={result} />
+                <CandidateCard key={result.rank} result={result} showSummary={hasSummaries} />
               ))}
             </ol>
           ) : (
