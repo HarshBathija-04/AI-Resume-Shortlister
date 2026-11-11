@@ -129,7 +129,10 @@ export function UploadForm() {
             id={ids.jd}
             value={jd}
             maxLength={MAX_JD_CHARS}
-            onChange={(e) => setJd(e.target.value)}
+            onChange={(e) => {
+              setJd(e.target.value)
+              setErrors((current) => ({ ...current, jd: undefined }))
+            }}
             rows={8}
             required
             aria-invalid={!!errors.jd}
