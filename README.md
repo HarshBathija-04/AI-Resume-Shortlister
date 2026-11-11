@@ -3,11 +3,14 @@
 **Upload a stack of resumes and a job description, get back a ranked shortlist with semantic match scores, matched and missing skills, and an AI fit summary for every candidate.**
 
 [![CI](https://github.com/HarshBathija-04/AI-Resume-Shortlister/actions/workflows/ci.yml/badge.svg)](https://github.com/HarshBathija-04/AI-Resume-Shortlister/actions/workflows/ci.yml)
+![Python 3.13](https://img.shields.io/badge/python-3.13-3776AB)
+![React 19](https://img.shields.io/badge/react-19-61DAFB)
+![PostgreSQL](https://img.shields.io/badge/postgres-16-4169E1)
 
 | | |
 | --- | --- |
 | Live demo | `https://<your-app>.vercel.app` *(placeholder, set after the first Vercel deploy)* |
-| API | `https://<your-api>.onrender.com/health` *(placeholder, set after the first Render deploy)* |
+| API health | `https://<your-api>.onrender.com/health` *(placeholder, set after the first Render deploy)* |
 
 The API runs on Render's free tier, which sleeps after 15 minutes idle. The first request can take 30 to 60 seconds; the UI shows a "waking up the server" notice while that happens.
 
@@ -46,6 +49,15 @@ flowchart LR
 
 **Why ONNX instead of sentence-transformers:** the original app loaded the same MiniLM model through PyTorch, which needs about 1 GB of RAM. The quantized ONNX export of that model adds about 60 MB, so semantic matching fits inside Render's 512 MB free instance. Quantization shifts individual scores by a few points (up to about 6 on the bundled samples) but keeps the same top candidate.
 
+## Engineering highlights
+
+- **Schema-per-app on a shared database.** Several portfolio apps share one free Render Postgres instance. Every connection sets `search_path` to `DB_SCHEMA`, the name is validated as a plain SQL identifier before it is ever interpolated, and `db.py` creates the schema and applies `migrations/*.sql` once each, tracked in `schema_migrations`.
+- **One transaction per run.** The run row and all of its ranked results are written inside a single connection block, so a failed insert never leaves a half-saved shortlist behind.
+- **A 512 MB-friendly semantic model.** MiniLM runs as a quantized ONNX export through onnxruntime instead of PyTorch (about 60 MB instead of about 1 GB), loaded lazily once behind a lock and shared across gunicorn threads.
+- **AI that cannot break a run.** All summaries come from one batched Groq call with a JSON response format. Rate limits, timeouts and malformed JSON fall back to "summary unavailable", and resume text is passed as untrusted data with an instruction to ignore embedded prompts.
+- **Defensive input handling.** Pydantic models and per-file checks (type, 5 MB, 12 files) at the API boundary, a consistent `{"error": {...}}` envelope, per-IP rate limits on the CPU-heavy endpoint, security headers, and CSV export cells escaped against spreadsheet formula injection.
+- **Cold starts handled in the UI.** The API client flags any request slower than 5 seconds and shows a "waking up the server" banner, while a GitHub Actions cron keeps the free Render service warm.
+
 ## Tech stack
 
 | Layer | Tools |
@@ -58,7 +70,7 @@ flowchart LR
 | Quality | pytest, ruff, vitest, oxlint, prettier, GitHub Actions |
 | Hosting | Vercel (frontend), Render web service and PostgreSQL (API, DB) |
 
-## Local setup
+## Quick start
 
 Prerequisites: Python 3.13, Node 24 or newer, and a PostgreSQL database (Docker works fine).
 
@@ -73,7 +85,7 @@ source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
 cp .env.example .env                 # then set GROQ_API_KEY
 python -m nltk.downloader -d ./nltk_data punkt punkt_tab stopwords wordnet omw-1.4
-python seed.py                       # runs migrations and inserts 3 demo runs (idempotent)
+python seed.py                       # migrations + 3 demo runs (idempotent; first run downloads the model)
 flask --app app run --port 5100
 
 # 2. Frontend (new terminal)
@@ -83,7 +95,7 @@ cp .env.example .env                 # VITE_API_URL=http://localhost:5100
 npm run dev                          # http://localhost:5200
 ```
 
-The MiniLM model (about 23 MB) is downloaded into `backend/models/` on first use.
+Open http://localhost:5200 and you should see the three demo shortlists under **Recent shortlists**. The MiniLM model (about 23 MB) is downloaded into `backend/models/` on first use, so the first seed takes a minute.
 
 ### Tests and linters
 
@@ -108,7 +120,7 @@ python evaluation.py --job job.txt --resumes sample_resumes --labels labels.csv 
 | --- | --- | --- |
 | `GET` | `/health` | `{"status":"ok","db":"ok"}`, or 503 with `db: "error"` |
 | `GET` | `/api/runs?limit=20&offset=0` | Run history, newest first |
-| `POST` | `/api/runs` | Create a run. Multipart (`title`, `job_description`, `resumes[]`) or JSON (`{title, job_description, resumes: [{filename, text}]}`). Limited to 5 per minute per IP. |
+| `POST` | `/api/runs` | Create a run. Multipart (`title`, `job_description`, `resumes[]`) or JSON (`{title, job_description, resumes: [{filename, text}]}`). Limited to 5 per minute and 30 per hour per IP. |
 | `GET` | `/api/runs/:id` | One run with its ranked results |
 | `GET` | `/api/runs/:id/results.csv` | CSV export |
 
@@ -138,12 +150,12 @@ Errors always look like `{"error": {"code": "validation_error", "message": "..."
 
 ### 1. Database (one-time, shared)
 
-All portfolio apps share one Render PostgreSQL instance; this app keeps its tables in the `resume_shortlister` schema. Create the database once in the Render dashboard if it does not exist yet, and copy its **Internal Database URL**.
+All portfolio apps share one Render PostgreSQL instance; this app keeps its tables in its own schema (`DB_SCHEMA`, default `resume_shortlister`), which is created on the first deploy. Create the database once in the Render dashboard if it does not exist yet, and copy its **Internal Database URL**.
 
 ### 2. API on Render
 
 1. In Render choose **New > Blueprint** and select this repository. Render reads `render.yaml` and creates the `resume-shortlister-api` web service (root directory `backend`).
-2. When prompted, set:
+2. `render.yaml` already sets `DB_SCHEMA=resume_shortlister`, `MATCH_METHOD` and `NLTK_DATA`. When prompted, set the secrets:
    - `DATABASE_URL`: the shared database's internal URL
    - `GROQ_API_KEY`: your Groq key
    - `FRONTEND_URL`: your Vercel URL (add it after step 3 if you do not know it yet)
